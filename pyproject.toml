@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hatsuon"
-version = "0.1.0"
+version = "0.1.1"
 description = "Japanese pronunciation scoring: mora-level accuracy, special morae and pitch accent."
 readme = "README.md"
 license = "MIT"
@@ -26,6 +26,7 @@ dependencies = ["numpy>=1.24"]
 Homepage = "https://github.com/dungca1512/hatsuon"
 Source = "https://github.com/dungca1512/hatsuon"
 Issues = "https://github.com/dungca1512/hatsuon/issues"
+Changelog = "https://github.com/dungca1512/hatsuon/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 # Text front-end: reading, morae, accent prediction (spec §4.1)
@@ -47,7 +48,7 @@ packages = ["src/hatsuon"]
 
 # Explicit list: the sdist must never pick up data/ (corpora, model weights)
 [tool.hatch.build.targets.sdist]
-include = ["src/hatsuon", "tests", "tools", "docs", "README.md", "LICENSE", "DATA_SOURCES.md"]
+include = ["src/hatsuon", "tests", "tools", "docs", "README.md", "LICENSE", "DATA_SOURCES.md", "CHANGELOG.md"]
 exclude = ["**/__pycache__", "*.wav", "*.onnx"]
 
 [tool.ruff]

@@ -14,6 +14,10 @@ SR = 16000
 _FRAME = 400  # 25 ms analysis window for VAD/quality
 _HOP = 160  # 10 ms
 _EPS = 1e-10
+# input sample-rate bounds: below 8 kHz the model is useless, and an absurd rate
+# would make resampling allocate far more memory than the input itself
+MIN_SR = 8_000
+MAX_SR = 192_000
 
 AudioInput = str | PathLike | bytes | tuple[np.ndarray, int]
 
@@ -50,30 +54,61 @@ class Audio:
         return len(self.wave) / SR
 
 
-def _decode(audio: AudioInput) -> tuple[np.ndarray, int]:
+def _n_samples(x: np.ndarray) -> int:
+    # 2-D input is (samples, channels) or (channels, samples); samples is the long axis
+    return int(x.shape[0]) if x.ndim == 1 else int(max(x.shape))
+
+
+def _check_size(n: int, sr: int, max_duration: float) -> None:
+    """Reject a bad rate or an over-long input before it is decoded or resampled."""
+    if not MIN_SR <= sr <= MAX_SR:
+        raise AudioError(f"unsupported sample rate {sr} Hz (allowed {MIN_SR}-{MAX_SR} Hz)")
+    if n / sr > max_duration:
+        raise AudioError(f"audio is {n / sr:.1f}s, limit is {max_duration:.0f}s")
+
+
+def _decode(audio: AudioInput, max_duration: float) -> tuple[np.ndarray, int]:
     if isinstance(audio, np.ndarray):
         raise TypeError("pass a raw waveform as (samples, sample_rate)")
     if isinstance(audio, tuple):
         x, sr = audio
-        return np.asarray(x, dtype=np.float32), int(sr)
+        x, sr = np.asarray(x, dtype=np.float32), int(sr)
+        if x.ndim not in (1, 2):
+            raise AudioError(f"waveform must be 1-D or 2-D, got {x.ndim}-D")
+        _check_size(_n_samples(x), sr, max_duration)
+        return x, sr
     try:
         import soundfile as sf
     except ImportError as e:  # pragma: no cover
         raise ImportError("decoding audio needs: pip install 'hatsuon[audio]'") from e
     src = io.BytesIO(audio) if isinstance(audio, (bytes, bytearray)) else fspath(audio)
     try:
-        x, sr = sf.read(src, dtype="float32", always_2d=True)
+        info = sf.info(src)  # header only: no samples decoded yet
+    except RuntimeError as sf_err:  # libsndfile cannot read e.g. M4A/AAC
+        return _decode_librosa(src, max_duration, sf_err)
+    _check_size(info.frames, info.samplerate, max_duration)
+    if isinstance(src, io.BytesIO):
+        src.seek(0)
+    try:
+        # read at most one frame past the limit, in case the header understates it
+        x, sr = sf.read(src, frames=int(max_duration * info.samplerate) + 1,
+                        dtype="float32", always_2d=True)
         return x, sr
-    except RuntimeError as sf_err:  # libsndfile cannot read e.g. M4A/AAC → try librosa
-        try:
-            import librosa
+    except RuntimeError as sf_err:
+        return _decode_librosa(src, max_duration, sf_err)
 
-            if isinstance(src, io.BytesIO):
-                src.seek(0)
-            x, sr = librosa.load(src, sr=None, mono=False)
-            return np.asarray(x, dtype=np.float32).T, sr
-        except Exception as e:
-            raise AudioError(f"cannot decode audio: {sf_err}") from e
+
+def _decode_librosa(src, max_duration: float, sf_err: Exception) -> tuple[np.ndarray, int]:
+    try:
+        import librosa
+
+        if isinstance(src, io.BytesIO):
+            src.seek(0)
+        # stop decoding just past the limit; the caller rejects the overflow
+        x, sr = librosa.load(src, sr=None, mono=False, duration=max_duration + 1.0)
+        return np.asarray(x, dtype=np.float32).T, int(sr)
+    except Exception as e:
+        raise AudioError(f"cannot decode audio: {sf_err}") from e
 
 
 def _to_mono_16k(x: np.ndarray, sr: int) -> np.ndarray:
@@ -100,16 +135,20 @@ def frame_energy_db(x: np.ndarray) -> np.ndarray:
 
 
 def load(audio: AudioInput, opts: AudioOptions = AudioOptions()) -> Audio:
-    """Decode and preprocess once; the result is shared by all later stages."""
-    x, sr = _decode(audio)
-    if x.size == 0 or sr <= 0:
+    """Decode and preprocess once; the result is shared by all later stages.
+
+    Size limits are checked before decoding (from the file header) and before
+    resampling, so an over-long input fails without a large allocation. Encoded
+    ``bytes`` are already in the caller's memory: cap request size upstream.
+    """
+    x, sr = _decode(audio, opts.max_duration)
+    if x.size == 0:
         raise AudioError("audio is empty")
+    _check_size(_n_samples(x), sr, opts.max_duration)  # decoded length, not the header's
     if not np.all(np.isfinite(x)):
         raise AudioError("audio contains NaN or inf samples")
     clip = float(np.mean(np.abs(x) >= opts.clip_level))
     x = _to_mono_16k(x, sr)
-    if len(x) / SR > opts.max_duration:
-        raise AudioError(f"audio is {len(x) / SR:.1f}s, limit is {opts.max_duration:.0f}s")
     x = x - np.mean(x)
     peak = float(np.max(np.abs(x)))
     scale = 1.0 / peak if peak > _EPS else 1.0

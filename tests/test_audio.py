@@ -79,6 +79,48 @@ def test_max_duration():
         load((tone(3.0), SR), AudioOptions(max_duration=2.0))
 
 
+@pytest.mark.parametrize("sr", [0, 1, 4000, 10_000_000])
+def test_implausible_sample_rate_rejected(sr):
+    # sr=1 would otherwise be upsampled 16000x before any length check
+    with pytest.raises(AudioError, match="sample rate"):
+        load((np.zeros(1000, np.float32), sr))
+
+
+def test_long_tuple_rejected_before_resampling(monkeypatch):
+    import hatsuon.audio as audio_mod
+
+    def boom(*a, **k):
+        raise AssertionError("resampled an over-long input")
+
+    monkeypatch.setattr(audio_mod, "_to_mono_16k", boom)
+    x = np.zeros((3 * 44100, 2), np.float32)
+    with pytest.raises(AudioError, match="limit"):
+        load((x, 44100), AudioOptions(max_duration=2.0))
+
+
+def test_long_file_rejected_from_header(tmp_path, monkeypatch):
+    sf = pytest.importorskip("soundfile")
+    path = tmp_path / "long.wav"
+    sf.write(path, tone(3.0), SR)
+
+    def boom(*a, **k):
+        raise AssertionError("decoded samples of an over-long file")
+
+    monkeypatch.setattr(sf, "read", boom)
+    with pytest.raises(AudioError, match="limit"):
+        load(str(path), AudioOptions(max_duration=2.0))
+    with pytest.raises(AudioError, match="limit"):
+        load(path.read_bytes(), AudioOptions(max_duration=2.0))
+
+
+def test_file_within_limit_still_decodes(tmp_path):
+    sf = pytest.importorskip("soundfile")
+    path = tmp_path / "ok.wav"
+    sf.write(path, utterance(sr=44100), 44100)
+    a = load(str(path), AudioOptions(max_duration=2.5))
+    assert abs(a.duration - 2.0) < 0.01 and a.speech is not None
+
+
 def test_deterministic():
     a, b = load((utterance(), SR)), load((utterance(), SR))
     assert a.speech == b.speech and np.array_equal(a.wave, b.wave)

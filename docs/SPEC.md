@@ -94,8 +94,8 @@ Distinguish **hard errors** (raise an exception, no score) from **soft condition
 (score returned with warnings / abstentions).
 
 Hard errors:
-- Audio cannot be decoded, has zero length, or exceeds the configured maximum
-  duration/size.
+- Audio cannot be decoded, has zero length, exceeds the configured maximum
+  duration/size, or has a sample rate outside 8–192 kHz.
 - Target text is empty after normalization, or contains no Japanese-readable
   content (e.g. only punctuation or emoji).
 - Reading override cannot be aligned to the text.
@@ -132,7 +132,9 @@ hatsuon.score(audio, text, *, reading=None, accent=None, reference_audio=None,
   `timing_ratios` (special-mora duration / mean mora). Its keys are diagnostic and
   may change between minor versions.
 - Hard errors: `hatsuon.AudioError`, `hatsuon.TextError`; a missing acoustic model
-  raises `ModelNotFoundError` (create it once with `hatsuon-export`).
+  raises `ModelNotFoundError` (create it once with `hatsuon-export`). `AudioError`
+  covers undecodable input, a sample rate outside 8–192 kHz and input longer than
+  `max_duration` (60 s).
 
 ---
 
@@ -179,6 +181,10 @@ Data passed between stages:
 ## 4. Per-stage specification
 
 ### 4.0 Audio preprocessing (stage A)
+- Check the sample rate and duration **before** decoding (from the file header)
+  and before resampling, so an over-long or malformed input fails without a large
+  allocation. Decoding reads at most one frame past the limit, in case the header
+  understates the length.
 - Decode, downmix to mono, resample to 16 kHz with a high-quality resampler.
 - DC removal; peak-normalize for analysis only (store scale factor; do not use
   normalized loudness as a score feature).
