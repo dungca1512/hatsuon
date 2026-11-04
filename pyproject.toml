@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hatsuon"
+version = "0.1.0"
+description = "Japanese pronunciation scoring: mora-level accuracy, special morae and pitch accent."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Công Anh Dũng" }]
+keywords = ["japanese", "pronunciation", "speech", "pitch-accent", "gop", "mora"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Natural Language :: Japanese",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
+dependencies = ["numpy>=1.24"]
+
+[project.urls]
+Homepage = "https://github.com/dungca1512/hatsuon"
+Source = "https://github.com/dungca1512/hatsuon"
+Issues = "https://github.com/dungca1512/hatsuon/issues"
+
+[project.optional-dependencies]
+# Text front-end: reading, morae, accent prediction (spec §4.1)
+frontend = ["pyopenjtalk>=0.3"]
+# Audio decode/resample + F0 (spec §4.0, §4.4)
+audio = ["soundfile>=0.12", "librosa>=0.10"]
+# CPU acoustic model inference (spec §4.2)
+onnx = ["onnxruntime>=1.17"]
+all = ["hatsuon[frontend,audio,onnx]"]
+# One-off local model conversion (`hatsuon-export`); not needed at runtime
+export = ["torch>=2.2", "transformers>=4.40", "onnx>=1.15"]
+dev = ["pytest>=8", "ruff>=0.5", "build>=1.2", "twine>=5"]
+
+[project.scripts]
+hatsuon-export = "hatsuon.export:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hatsuon"]
+
+# Explicit list: the sdist must never pick up data/ (corpora, model weights)
+[tool.hatch.build.targets.sdist]
+include = ["src/hatsuon", "tests", "tools", "docs", "README.md", "LICENSE", "DATA_SOURCES.md"]
+exclude = ["**/__pycache__", "*.wav", "*.onnx"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint.flake8-bugbear]
+# frozen dataclasses: safe as argument defaults
+extend-immutable-calls = ["hatsuon.audio.AudioOptions", "hatsuon.pitch.PitchOptions"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

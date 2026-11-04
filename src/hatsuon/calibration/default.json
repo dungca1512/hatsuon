@@ -1,0 +1,409 @@
+{
+ "format": 1,
+ "model": {
+  "repo": "prj-beatrice/japanese-hubert-base-phoneme-ctc-v4",
+  "revision": "f5fe07043bcb0b77a86faf72ac6d8fc1ae558f99",
+  "quantized": true
+ },
+ "params": {
+  "context_pad_s": {
+   "value": 0.3,
+   "status": "provisional",
+   "range": [
+    0.0,
+    0.5
+   ],
+   "dataset": "5 synthetic sentences (macOS TTS, Kyoko voice)",
+   "metric": "free-decode phone error rate: 0.221 at 0 s, 0.087 at 0.1 s, 0.019 from 0.2 s",
+   "date": "2026-11-04",
+   "note": "0.3 s = smallest plateau value + margin; re-check on JSUT"
+  },
+  "gop_slope": {
+   "value": 2.0,
+   "status": "provisional",
+   "range": [
+    0.5,
+    4.0
+   ],
+   "dataset": "none",
+   "metric": "-",
+   "date": "2026-11-04",
+   "note": "logistic slope of z-scored GOP → 0–100"
+  },
+  "gop_z0": {
+   "value": -2.0,
+   "status": "provisional",
+   "range": [
+    -4.0,
+    0.0
+   ],
+   "dataset": "none",
+   "metric": "-",
+   "date": "2026-11-04",
+   "note": "z at which a phone scores 50"
+  },
+  "mispronounced_threshold": {
+   "value": 30.0,
+   "status": "provisional",
+   "range": [
+    20.0,
+    70.0
+   ],
+   "dataset": "none (needs labelled L2 data)",
+   "metric": "-",
+   "date": "2026-11-04",
+   "note": "low on purpose: favour precision until L2 data is available"
+  },
+  "substitution_margin": {
+   "value": 1.0,
+   "status": "provisional",
+   "range": [
+    0.5,
+    3.0
+   ],
+   "dataset": "none",
+   "metric": "-",
+   "date": "2026-11-04",
+   "note": "nats of span posterior mass, competitor over target"
+  },
+  "deletion_core_logp": {
+   "value": -6.0,
+   "status": "provisional",
+   "range": [
+    -10.0,
+    -2.0
+   ],
+   "dataset": "none",
+   "metric": "-",
+   "date": "2026-11-04",
+   "note": "mora deleted if no free-decode match AND mean core log-posterior below this"
+  },
+  "content_mismatch_ratio": {
+   "value": 0.4,
+   "status": "provisional",
+   "range": [
+    0.2,
+    0.7
+   ],
+   "dataset": "JSUT basic5000, 100 random utts (seed 2): own text vs. the next utterance's text",
+   "metric": "match ratio (÷ max(target, hyp)): native min 0.825 / p5 0.906; wrong-sentence max 0.351 / p95 0.316 → 0 errors either way from 0.4 to 0.7",
+   "date": "2026-11-04",
+   "note": "lowest separating value, to spare poor-but-honest L2 attempts; needs L2 data"
+  },
+  "timing_long": {
+   "value": [
+    0.74,
+    3.6
+   ],
+   "status": "calibrated",
+   "range": [
+    [
+     0.4,
+     1.6
+    ],
+    [
+     2.5,
+     4.0
+    ]
+   ],
+   "dataset": "JVS parallel100, 2986 utts, 80 tune / 20 test speakers",
+   "metric": "tune p1/p50/p99 [0.735, 1.138, 3.6] (n=14280); test native false-alarm 1.54% (n=3709)",
+   "date": "2026-11-04",
+   "note": "whole long vowel / mean mora duration; native-only: L2 F1 not yet measured; native-only: L2 F1 not yet measured"
+  },
+  "timing_sokuon": {
+   "value": [
+    0.42,
+    2.0
+   ],
+   "status": "calibrated",
+   "range": [
+    [
+     0.3,
+     1.2
+    ],
+    [
+     2.0,
+     5.0
+    ]
+   ],
+   "dataset": "JVS parallel100, 2986 utts, 80 tune / 20 test speakers",
+   "metric": "tune p1/p50/p99 [0.421, 0.669, 0.996] (n=1830); test native false-alarm 1.10% (n=456)",
+   "date": "2026-11-04",
+   "note": "cl duration / mean mora duration (spec range is vs. singleton closure); native-only: L2 F1 not yet measured; native-only: L2 F1 not yet measured"
+  },
+  "timing_hatsuon": {
+   "value": [
+    0.38,
+    2.54
+   ],
+   "status": "calibrated",
+   "range": [
+    [
+     0.3,
+     1.0
+    ],
+    [
+     1.5,
+     3.5
+    ]
+   ],
+   "dataset": "JVS parallel100, 2986 utts, 80 tune / 20 test speakers",
+   "metric": "tune p1/p50/p99 [0.375, 0.665, 2.54] (n=5425); test native false-alarm 1.57% (n=1338)",
+   "date": "2026-11-04",
+   "note": "N duration / mean mora duration; native-only: L2 F1 not yet measured; native-only: L2 F1 not yet measured"
+  },
+  "insertion_penalty": {
+   "value": 0.1,
+   "status": "provisional",
+   "range": [
+    0.0,
+    0.3
+   ],
+   "dataset": "none",
+   "metric": "-",
+   "date": "2026-11-04",
+   "note": "timing score fraction lost per inserted token run"
+  },
+  "pitch_dead_zone_st": {
+   "value": 1.5,
+   "status": "provisional",
+   "range": [
+    0.5,
+    3.0
+   ],
+   "dataset": "JSUT basic5000, 300 random utts (seed 0), 1089 accent phrases whose front-end nucleus matches jsut-label; one speaker, no held-out split yet",
+   "metric": "native accuracy (peak_delay 1): 0.765 / 0.858 / 0.897 / 0.881 / 0.835 / 0.790 at 0.5 / 1.0 / 1.5 / 2.0 / 2.5 / 3.0 st; false accept (non-adjacent) 0.20 at 1.5",
+   "date": "2026-11-04",
+   "note": "tools/eval_accent.py; re-check on JVS (many speakers) before marking calibrated"
+  },
+  "pitch_peak_delay_morae": {
+   "value": 1,
+   "status": "provisional",
+   "range": [
+    0,
+    1
+   ],
+   "dataset": "JSUT basic5000, 300 random utts (seed 0), 1089 accent phrases whose front-end nucleus matches jsut-label; one speaker, no held-out split yet",
+   "metric": "native accuracy on accented phrases 0.362 at 0 vs 0.887 at 1 (dz 1.5); adjacent-nucleus false accept 0.585 vs 0.791",
+   "date": "2026-11-04",
+   "note": "native F0 peak lies in the mora after the nucleus in ~53% of atamadaka and ~24% of nakadaka phrases; mora-level values cannot separate nucleus k from k+1 either way"
+  },
+  "pitch_min_coverage": {
+   "value": 0.5,
+   "status": "provisional",
+   "range": [
+    0.3,
+    0.8
+   ],
+   "dataset": "none",
+   "metric": "-",
+   "date": "2026-11-04"
+  },
+  "weights": {
+   "value": {
+    "accuracy": 0.7,
+    "timing": 0.2,
+    "pitch": 0.1
+   },
+   "status": "provisional",
+   "range": "simplex",
+   "dataset": "none (needs holistic human ratings)",
+   "metric": "-",
+   "date": "2026-11-04",
+   "note": "renormalized over non-abstained sub-scores"
+  }
+ },
+ "gop_norms": {
+  "_status": "calibrated",
+  "_method": "one scale for all phones (center 0): the 0.5% quantile of the worst native GOP per mora (tune speakers) / z at the mispronounced threshold, so native morae fall below it at that rate. Native GOP is a point mass at 0, so per-phone z-scores are degenerate",
+  "_dataset": "JVS parallel100, 2986 utts, 80 tune / 20 test speakers; synthetic one-mora substitutions on the same audio (spec B.4)",
+  "_date": "2026-11-04",
+  "_metric": "scale 1.8929 (speaker bootstrap 90% [1.822, 1.975]); test speakers: native mora < threshold 0.59%, synthetic substitution detected 0.9412; native mean mora score 99.25",
+  "I": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 1745
+  },
+  "N": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 5427
+  },
+  "U": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 1487
+  },
+  "a": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 21356
+  },
+  "b": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 2169
+  },
+  "by": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 385
+  },
+  "ch": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 1586
+  },
+  "cl": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 1833
+  },
+  "d": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 3642
+  },
+  "e": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 12859
+  },
+  "f": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 1044
+  },
+  "g": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 2825
+  },
+  "gy": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 571
+  },
+  "h": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 1385
+  },
+  "hy": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 516
+  },
+  "i": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 14972
+  },
+  "j": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 1570
+  },
+  "k": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 8410
+  },
+  "ky": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 917
+  },
+  "m": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 3323
+  },
+  "my": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 271
+  },
+  "n": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 7055
+  },
+  "ny": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 665
+  },
+  "o": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 23003
+  },
+  "p": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 1289
+  },
+  "py": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 164
+  },
+  "r": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 7823
+  },
+  "ry": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 581
+  },
+  "s": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 4493
+  },
+  "sh": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 3916
+  },
+  "t": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 7367
+  },
+  "ts": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 1177
+  },
+  "u": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 17339
+  },
+  "v": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 95
+  },
+  "w": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 2255
+  },
+  "y": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 1493
+  },
+  "z": {
+   "mean": 0.0,
+   "sd": 1.8929,
+   "n": 1031
+  }
+ }
+}

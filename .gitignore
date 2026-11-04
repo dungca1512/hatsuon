@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+
+# Never commit audio or downloaded corpora (licences forbid redistribution)
+data/
+*.wav
+*.flac
+*.mp3
+*.m4a
+*.onnx
+
+# Claude
+CLAUDE.md
