@@ -1,0 +1,62 @@
+# Publish to PyPI when a GitHub Release is published.
+# Uses PyPI Trusted Publishing (OIDC): no API token is stored in this repository,
+# and every uploaded file gets a provenance attestation tied to this workflow run.
+name: release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[all,dev]"
+      - run: ruff check .
+      # tests that need the exported model or the JSUT corpus skip themselves
+      - run: pytest -q
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Tag must match the package version
+        run: |
+          v=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          test "v$v" = "${GITHUB_REF_NAME}" || { echo "tag ${GITHUB_REF_NAME} != version v$v"; exit 1; }
+      - run: pip install build twine
+      - run: python -m build
+      - run: twine check dist/*
+      - name: No corpora, audio or model weights in the distributions
+        run: |
+          ! (tar tzf dist/*.tar.gz; unzip -Z1 dist/*.whl) | grep -iE '(^|/)data/|\.(wav|flac|mp3|onnx|jsonl)$'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/hatsuon/${{ github.event.release.tag_name }}/
+    permissions:
+      id-token: write  # OIDC token for Trusted Publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
