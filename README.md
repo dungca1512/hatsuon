@@ -55,6 +55,9 @@ print([x.value for x in r.warnings])
   below the `mispronounced` threshold. Synthetic one-mora substitutions (the
   text is changed, the audio is not) are caught 94% of the time: 98% for
   consonants and 91% for vowels. Real learner errors are subtler than these.
+  On about 10k utterances of non-native read speech (unlabelled), 4.5% of
+  morae are flagged `mispronounced`; how many of those flags are right is
+  still unmeasured.
 - **Pitch accent:**
   - Native speakers often place the F0 peak one mora late, so a fall up to one
     mora after the nucleus is accepted. As a result, a learner who puts the

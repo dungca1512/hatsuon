@@ -38,7 +38,11 @@ class AudioOptions:
     clip_ratio: float = 0.001
     quiet_dbfs: float = -40.0
     low_snr_db: float = 10.0
-    truncation_guard: float = 0.05  # speech this close to a file edge → truncated
+    truncation_guard: float = 0.05  # speech this close to a file edge → truncation candidate
+    # ... flagged only if the outermost frame is still loud: its level on a scale from
+    # the VAD threshold (0) to the median speech frame (1) reaches this value. Speech
+    # cut mid-word ends loud; speech that just ended has decayed to the threshold.
+    truncation_edge_frac: float = 0.5
 
 
 @dataclass
@@ -150,6 +154,25 @@ def frame_energy_db(x: np.ndarray) -> np.ndarray:
     return 10 * np.log10(np.mean(x[idx] ** 2, axis=1) + _EPS)
 
 
+def vad(e: np.ndarray, opts: AudioOptions) -> tuple[float, np.ndarray]:
+    """Energy VAD: (threshold dBFS, indices of speech frames)."""
+    floor = float(np.percentile(e, 10))
+    thr = max(floor + opts.vad_margin_db, float(e.max()) - opts.vad_range_db)
+    return thr, np.flatnonzero(e > thr)
+
+
+def edge_levels(e: np.ndarray, thr: float, voiced: np.ndarray, n: int,
+                opts: AudioOptions) -> tuple[float | None, float | None]:
+    """(lead, trail): level of the outermost frame, 0 at the VAD threshold and 1 at the
+    median speech frame (SNR-independent), or None when speech does not come within
+    `truncation_guard` of that file edge."""
+    span = max(float(np.median(e[voiced])) - thr, 1e-3)
+    guard = opts.truncation_guard * SR
+    lead = (float(e[0]) - thr) / span if voiced[0] * _HOP < guard else None
+    trail = (float(e[-1]) - thr) / span if n - (voiced[-1] * _HOP + _FRAME) < guard else None
+    return lead, trail
+
+
 def load(audio: AudioInput, opts: AudioOptions = AudioOptions()) -> Audio:
     """Decode and preprocess once; the result is shared by all later stages.
 
@@ -175,9 +198,7 @@ def load(audio: AudioInput, opts: AudioOptions = AudioOptions()) -> Audio:
         warnings.append("clipping")
 
     e = frame_energy_db(x)
-    floor = float(np.percentile(e, 10))
-    thr = max(floor + opts.vad_margin_db, float(e.max()) - opts.vad_range_db)
-    voiced = np.flatnonzero(e > thr)
+    thr, voiced = vad(e, opts)
     if peak <= _EPS or voiced.size * _HOP / SR < opts.min_speech:
         return Audio(wave=x, speech=None, scale=scale, warnings=warnings + ["no_speech"])
 
@@ -185,8 +206,8 @@ def load(audio: AudioInput, opts: AudioOptions = AudioOptions()) -> Audio:
     start = max(0, int(voiced[0]) * _HOP - margin)
     end = min(len(x), int(voiced[-1]) * _HOP + _FRAME + margin)
 
-    guard = opts.truncation_guard * SR
-    if voiced[0] * _HOP < guard or len(x) - (voiced[-1] * _HOP + _FRAME) < guard:
+    if any(lv is not None and lv >= opts.truncation_edge_frac
+           for lv in edge_levels(e, thr, voiced, len(x), opts)):
         warnings.append("truncated")
 
     speech_e = e[voiced]

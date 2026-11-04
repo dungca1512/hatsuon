@@ -111,7 +111,11 @@ Soft conditions (return result, set warning, lower `confidence`):
   pitch sub-score `null`, pitch statuses suppressed.
 - `partial_reading_uncertain` — automatic reading of one or more words was
   ambiguous and no override was supplied.
-- `truncated` — speech starts or ends at the file boundary (likely cut-off).
+- `truncated` — speech is cut off at a file boundary: speech comes within
+  `truncation_guard` (50 ms) of the edge **and** the outermost frame is still loud,
+  i.e. its level on a scale from the VAD threshold (0) to the median speech frame
+  (1) reaches `truncation_edge_frac`. A recording that stops right after speech has
+  decayed is not flagged (Appendix A.2).
 
 ### 2.4 Python binding (v0.1)
 ```python
@@ -676,6 +680,7 @@ ranges for a sweep, not answers.
 | Parameter | Controls | Data | Metric to optimize | Search range |
 |---|---|---|---|---|
 | VAD trim margin | Not cutting onsets / final devoiced vowels | Native + L2 | Deletion false-alarm rate on first/last mora | 50–300 ms |
+| `truncated` edge level (`truncation_edge_frac`) | Cut-off vs. recording that stops right after speech | Native + L2 with synthetic edge cuts: negatives cut 0–30 ms past the VAD edge, positives cut inside a speech frame 60–500 ms from it (`tools/tune_truncation.py`) | Smallest value with tune false-alarm ≤ 1 % on every source, then recall. A level in dB relative to the median speech frame was tried first: it depends on SNR (at 8 dB: native false alarms 0.0 %, L2 6.3 %), so the scale is anchored to the VAD threshold instead | 0–1 |
 | Low-SNR / too-quiet / clipping thresholds | When to warn and lower confidence | L2 + noise-augmented native (MUSAN-style noise at several SNRs) | Point where native false-alarm rate starts rising sharply | SNR 5–20 dB |
 | F0 search range (pass 1) | Coverage vs. octave errors | Native, both genders, several ages | Gross pitch error vs. a reference tracker or laryngograph data if available | lower 50–80 Hz, upper 400–700 Hz |
 | F0 pass-2 window around median | Octave error suppression | Same | Gross pitch error | ±0.7–1.2 octave |

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hatsuon"
-version = "0.1.1"
+version = "0.1.2"
 description = "Japanese pronunciation scoring: mora-level accuracy, special morae and pitch accent."
 readme = "README.md"
 license = "MIT"

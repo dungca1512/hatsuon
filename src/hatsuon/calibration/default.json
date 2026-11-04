@@ -90,6 +90,18 @@
    "date": "2026-11-04",
    "note": "lowest separating value, to spare poor-but-honest L2 attempts; needs L2 data"
   },
+  "truncation_edge_frac": {
+   "value": 0.5,
+   "status": "calibrated",
+   "range": [
+    0.0,
+    1.0
+   ],
+   "dataset": "synthetic edge cuts (tools/tune_truncation.py, seed 0) on JVS parallel100 (1926 utts, 20/speaker) + private-l2-ja-2026-11 (non-public, used with permission; 827 utts with >= 0.15 s natural silence at both ends); speaker split 80/20 by hash",
+   "metric": "rule: smallest value with tune false-alarm <= 1% on both sources. Tune FA / recall: JVS 0.6% / 89.7%, L2 0.8% / 70.5%. Test (once): JVS 1.0% / 91.1%, L2 1.0% / 74.8% (n_neg 1310, n_pos 1295). Guard-only baseline FA 97.4% on test. Whole L2 set: truncated rate 56.3% -> 16.9% (n=10696)",
+   "date": "2026-11-04",
+   "note": "outermost 25 ms frame level, 0 = VAD threshold, 1 = median speech frame; negatives = cut 0-30 ms past the VAD edge, positives = cut inside a speech frame 60-500 ms from it; mirrors AudioOptions.truncation_edge_frac"
+  },
   "timing_long": {
    "value": [
     0.74,

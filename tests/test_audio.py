@@ -62,8 +62,30 @@ def test_quality_warnings():
 
 
 def test_truncated():
+    # starts at full level at the file edge → cut mid-speech
     x = np.concatenate([tone(1.0), silence(0.5)])
     assert "truncated" in load((x, SR)).warnings
+    # same at the end
+    x = np.concatenate([silence(0.5), tone(1.0)])
+    assert "truncated" in load((x, SR)).warnings
+
+
+def test_tight_but_complete_end_is_not_truncated():
+    # the recording stops right as the speech has decayed (no trailing silence):
+    # speech reaches the edge, but the edge frame sits near the VAD threshold
+    decay = np.exp(-np.arange(int(0.2 * SR)) / (0.2 * SR) * np.log(10 ** (40 / 20)))
+    x = np.concatenate([silence(0.5), tone(1.0), tone(0.2) * decay.astype(np.float32)])
+    a = load((x, SR))
+    assert a.speech is not None and a.speech[1] == len(x)  # speech runs to the edge
+    assert "truncated" not in a.warnings
+    # guard-only behaviour (any level counts) would have flagged it
+    assert "truncated" in load((x, SR), AudioOptions(truncation_edge_frac=-1e9)).warnings
+
+
+def test_truncation_default_matches_calibration():
+    from hatsuon.calibration import load_calibration
+
+    assert AudioOptions().truncation_edge_frac == load_calibration()["truncation_edge_frac"]
 
 
 @pytest.mark.parametrize(
