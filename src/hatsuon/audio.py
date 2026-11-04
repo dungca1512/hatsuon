@@ -18,6 +18,7 @@ _EPS = 1e-10
 # would make resampling allocate far more memory than the input itself
 MIN_SR = 8_000
 MAX_SR = 192_000
+MAX_CHANNELS = 8  # every channel is decoded before the downmix, so cap them too
 
 AudioInput = str | PathLike | bytes | tuple[np.ndarray, int]
 
@@ -59,10 +60,16 @@ def _n_samples(x: np.ndarray) -> int:
     return int(x.shape[0]) if x.ndim == 1 else int(max(x.shape))
 
 
-def _check_size(n: int, sr: int, max_duration: float) -> None:
-    """Reject a bad rate or an over-long input before it is decoded or resampled."""
+def _n_channels(x: np.ndarray) -> int:
+    return 1 if x.ndim == 1 else int(min(x.shape))
+
+
+def _check_size(n: int, sr: int, max_duration: float, channels: int = 1) -> None:
+    """Reject a bad rate, channel count or length before decoding or resampling."""
     if not MIN_SR <= sr <= MAX_SR:
         raise AudioError(f"unsupported sample rate {sr} Hz (allowed {MIN_SR}-{MAX_SR} Hz)")
+    if not 1 <= channels <= MAX_CHANNELS:
+        raise AudioError(f"unsupported channel count {channels} (allowed 1-{MAX_CHANNELS})")
     if n / sr > max_duration:
         raise AudioError(f"audio is {n / sr:.1f}s, limit is {max_duration:.0f}s")
 
@@ -75,7 +82,7 @@ def _decode(audio: AudioInput, max_duration: float) -> tuple[np.ndarray, int]:
         x, sr = np.asarray(x, dtype=np.float32), int(sr)
         if x.ndim not in (1, 2):
             raise AudioError(f"waveform must be 1-D or 2-D, got {x.ndim}-D")
-        _check_size(_n_samples(x), sr, max_duration)
+        _check_size(_n_samples(x), sr, max_duration, _n_channels(x))
         return x, sr
     try:
         import soundfile as sf
@@ -86,7 +93,7 @@ def _decode(audio: AudioInput, max_duration: float) -> tuple[np.ndarray, int]:
         info = sf.info(src)  # header only: no samples decoded yet
     except RuntimeError as sf_err:  # libsndfile cannot read e.g. M4A/AAC
         return _decode_librosa(src, max_duration, sf_err)
-    _check_size(info.frames, info.samplerate, max_duration)
+    _check_size(info.frames, info.samplerate, max_duration, info.channels)
     if isinstance(src, io.BytesIO):
         src.seek(0)
     try:
@@ -100,8 +107,17 @@ def _decode(audio: AudioInput, max_duration: float) -> tuple[np.ndarray, int]:
 
 def _decode_librosa(src, max_duration: float, sf_err: Exception) -> tuple[np.ndarray, int]:
     try:
+        import audioread  # librosa's fallback backend; reads metadata without decoding
         import librosa
 
+        if isinstance(src, io.BytesIO):
+            src.seek(0)
+        with audioread.audio_open(src) as f:
+            sr, channels, dur = int(f.samplerate), int(f.channels), float(f.duration or 0.0)
+    except Exception as e:
+        raise AudioError(f"cannot decode audio: {sf_err}") from e
+    _check_size(int(dur * sr), sr, max_duration, channels)
+    try:
         if isinstance(src, io.BytesIO):
             src.seek(0)
         # stop decoding just past the limit; the caller rejects the overflow
@@ -144,7 +160,8 @@ def load(audio: AudioInput, opts: AudioOptions = AudioOptions()) -> Audio:
     x, sr = _decode(audio, opts.max_duration)
     if x.size == 0:
         raise AudioError("audio is empty")
-    _check_size(_n_samples(x), sr, opts.max_duration)  # decoded length, not the header's
+    # decoded size, not the header's
+    _check_size(_n_samples(x), sr, opts.max_duration, _n_channels(x))
     if not np.all(np.isfinite(x)):
         raise AudioError("audio contains NaN or inf samples")
     clip = float(np.mean(np.abs(x) >= opts.clip_level))

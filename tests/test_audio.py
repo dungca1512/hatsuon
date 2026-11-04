@@ -113,6 +113,17 @@ def test_long_file_rejected_from_header(tmp_path, monkeypatch):
         load(path.read_bytes(), AudioOptions(max_duration=2.0))
 
 
+def test_too_many_channels_rejected(tmp_path, monkeypatch):
+    with pytest.raises(AudioError, match="channel"):
+        load((np.zeros((SR, 16), np.float32), SR))
+    sf = pytest.importorskip("soundfile")
+    path = tmp_path / "wide.wav"
+    sf.write(path, np.zeros((SR // 10, 16), np.float32), SR)
+    monkeypatch.setattr(sf, "read", lambda *a, **k: pytest.fail("decoded a 16-channel file"))
+    with pytest.raises(AudioError, match="channel"):
+        load(str(path))
+
+
 def test_file_within_limit_still_decodes(tmp_path):
     sf = pytest.importorskip("soundfile")
     path = tmp_path / "ok.wav"

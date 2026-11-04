@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- More than 8 audio channels now raises `AudioError` before decoding, since every
+  channel is decoded before the downmix.
+- The M4A/AAC fallback decoder (audioread) reads the sample rate, channel count
+  and duration from the metadata, and rejects bad input before decoding.
+
 ## 0.1.1
 
 ### Fixed

@@ -95,7 +95,7 @@ Distinguish **hard errors** (raise an exception, no score) from **soft condition
 
 Hard errors:
 - Audio cannot be decoded, has zero length, exceeds the configured maximum
-  duration/size, or has a sample rate outside 8–192 kHz.
+  duration/size, or has a sample rate outside 8–192 kHz or more than 8 channels.
 - Target text is empty after normalization, or contains no Japanese-readable
   content (e.g. only punctuation or emoji).
 - Reading override cannot be aligned to the text.
@@ -133,7 +133,8 @@ hatsuon.score(audio, text, *, reading=None, accent=None, reference_audio=None,
   may change between minor versions.
 - Hard errors: `hatsuon.AudioError`, `hatsuon.TextError`; a missing acoustic model
   raises `ModelNotFoundError` (create it once with `hatsuon-export`). `AudioError`
-  covers undecodable input, a sample rate outside 8–192 kHz and input longer than
+  covers undecodable input, a sample rate outside 8–192 kHz, more than 8 channels
+  and input longer than
   `max_duration` (60 s).
 
 ---
