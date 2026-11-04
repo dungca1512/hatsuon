@@ -1,6 +1,7 @@
 # Publish to PyPI when a GitHub Release is published.
 # Uses PyPI Trusted Publishing (OIDC): no API token is stored in this repository,
 # and every uploaded file gets a provenance attestation tied to this workflow run.
+# Actions are pinned to full commit SHAs (tag in the comment); Dependabot bumps them.
 name: release
 
 on:
@@ -14,8 +15,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
       - run: pip install -e ".[all,dev]"
@@ -27,8 +30,10 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
       - name: Tag must match the package version
@@ -41,7 +46,7 @@ jobs:
       - name: No corpora, audio or model weights in the distributions
         run: |
           ! (tar tzf dist/*.tar.gz; unzip -Z1 dist/*.whl) | grep -iE '(^|/)data/|\.(wav|flac|mp3|onnx|jsonl)$'
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dist
           path: dist/
@@ -51,12 +56,14 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/hatsuon/${{ github.event.release.tag_name }}/
+      url: https://pypi.org/project/hatsuon/
     permissions:
       id-token: write  # OIDC token for Trusted Publishing
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: dist
           path: dist/
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        with:
+          attestations: true
